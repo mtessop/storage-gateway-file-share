@@ -1,24 +1,23 @@
 AWSTemplateFormatVersion: "2010-09-09"
-
-Description: "CloudFormation template to create an SMB file share on an AWS Storage Gateway."
+Description: "Automated setup for AWS Storage Gateway and SMB File Share"
 
 Parameters:
   GatewayARN:
-    Description: "ARN of the pre-activated Storage Gateway"
     Type: String
+    Description: "ARN of the pre-activated Storage Gateway (must be provided manually after activation)."
 
   S3BucketName:
-    Description: "Name of the S3 bucket to use as backend for the file share"
     Type: String
-
+    Description: "Name of the S3 bucket to use for file storage."
+  
 Resources:
   S3Bucket:
-    Type: "AWS::S3::Bucket"
+    Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref S3BucketName
 
   IAMRoleForStorageGateway:
-    Type: "AWS::IAM::Role"
+    Type: AWS::IAM::Role
     Properties:
       RoleName: "StorageGatewaySMBRole"
       AssumeRolePolicyDocument:
@@ -45,12 +44,12 @@ Resources:
                   - "s3:DeleteObject"
                 Resource: !Sub "arn:aws:s3:::${S3BucketName}/*"
 
-  StorageGatewaySMBFileShare:
-    Type: "AWS::StorageGateway::SMBFileShare"
+  SMBFileShare:
+    Type: AWS::StorageGateway::SMBFileShare
     Properties:
       GatewayARN: !Ref GatewayARN
       RoleArn: !GetAtt IAMRoleForStorageGateway.Arn
-      LocationARN: !GetAtt S3Bucket.Arn
+      LocationARN: !Sub "arn:aws:s3:::${S3BucketName}"
       DefaultStorageClass: "S3_STANDARD"
       ObjectACL: "BucketOwnerFullControl"
       ReadOnly: false
@@ -61,6 +60,14 @@ Resources:
       Authentication: "ActiveDirectory"
 
 Outputs:
+  S3Bucket:
+    Description: "S3 Bucket created for storage"
+    Value: !Ref S3Bucket
+
+  StorageGatewayRole:
+    Description: "IAM Role created for Storage Gateway"
+    Value: !GetAtt IAMRoleForStorageGateway.Arn
+
   SMBFileShareARN:
     Description: "ARN of the created SMB File Share"
-    Value: !Ref StorageGatewaySMBFileShare
+    Value: !Ref SMBFileShare
